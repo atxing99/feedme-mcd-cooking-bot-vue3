@@ -1,14 +1,12 @@
 import { RouteRecordRaw } from 'vue-router';
-import IndexPage from 'layouts/MainLayout.vue';
+import OrderPage from 'pages/order.vue';
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    component: () => IndexPage
+    component: () => OrderPage
   },
 
-  // Always leave this as last one,
-  // but you can also remove it
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue')
