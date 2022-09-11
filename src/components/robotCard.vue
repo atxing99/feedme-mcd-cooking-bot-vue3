@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { PropType } from 'vue';
-import { Bot } from '../models/order';
+import { Bot } from '../models/bot';
 
 defineProps({
   bot: {
@@ -21,19 +21,16 @@ defineProps({
 
     <q-card-section>
       <div>
-        <div class="text-center">
-          <span class="text-bold text-h6">{{
-            bot.orderId ? 'Preparing' : 'Ready'
-          }}</span>
-          <div v-if="bot.orderId">
-            <div class="text-h6">Order ID: {{ bot.orderId }}</div>
-            <div class="loading">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
+        <div class="text-center" v-if="bot.orderId">
+          <span class="text-bold text-h6">Preparing</span>
+          <div class="text-h6">Order ID: {{ bot.orderId }}</div>
+          <div class="loading">
+            <span></span>
+            <span></span>
+            <span></span>
           </div>
         </div>
+        <div class="text-bold text-center text-h6" v-else>Ready</div>
       </div>
     </q-card-section>
   </q-card>

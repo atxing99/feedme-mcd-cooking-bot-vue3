@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { Order, Bot } from '../models/order';
+import { Order } from '../models/order';
+import { Bot } from '../models/bot';
 import RobotCard from 'src/components/robotCard.vue';
 
 let botIndex = 1;
@@ -10,12 +11,12 @@ const orders = ref<Order[]>([]);
 
 const pendingOrders = computed(() =>
   orders.value
-    .filter((order) => order.isCompleted === false)
+    .filter((order) => order.isCompleted === false && order.isDeleted !== true)
     .sort((orderA, orderB) => Number(orderB.isVIP) - Number(orderA.isVIP))
 );
 
 const completedOrders = computed(() =>
-  orders.value.filter((order) => order.isCompleted === true)
+  orders.value.filter((order) => order.isCompleted === true && !order.isDeleted)
 );
 
 function addBot() {
@@ -24,6 +25,7 @@ function addBot() {
     orderId: null
   };
   bots.value.push(bot);
+  console.log('bots', bots.value);
   botGetOrder(bot);
 }
 
@@ -35,10 +37,15 @@ function removeBot() {
     );
     if (selectedOrder) {
       selectedOrder.botId = null;
-      removedBot.orderId = null;
-      removeTimer(removedBot);
+      selectedOrder.isDeleted = true;
+      resetBot(removedBot);
     }
   }
+}
+
+function getFreeBot(): Bot | null {
+  const freeBot = bots.value.find((bot) => bot.orderId === null);
+  return freeBot ? freeBot : null;
 }
 
 function addOrder(isVIP = false) {
@@ -47,28 +54,49 @@ function addOrder(isVIP = false) {
     isVIP: isVIP,
     botId: null,
     isCompleted: false,
-    cookPeriod: 10
+    cookPeriod: 5,
+    isDeleted: false
   });
 
-  const freeBot: Bot = bots.value.filter((bot) => bot.orderId === null)[0];
+  const freeBot = getFreeBot();
 
   if (freeBot) {
+    console.log('got freeBot');
     botGetOrder(freeBot);
+  } else {
+    console.log('no freeBot');
   }
+  console.log('orders', orders.value);
 }
 
 function removeOrder(orderId: number) {
-  orders.value = orders.value.filter((order) => order.id != orderId);
+  const orderToRemove = orders.value.find((order) => order.id == orderId);
+  if (orderToRemove) {
+    orderToRemove.isDeleted = true;
+  }
 }
 
-function removeTimer(bot: Bot) {
+function resetBot(bot: Bot) {
+  bot.orderId = null;
   bot.timer = null;
+}
+
+function markOrderComplete(order: Order, bot: Bot) {
+  order.isCompleted = true;
+  botGetOrder(bot);
+
+  console.log('markOrderComplete');
+  console.log('order', order);
+  console.log('bot', bot);
+  console.log('bots.value', bots.value);
 }
 
 function botGetOrder(bot: Bot) {
   const freePendingOrder: Order = orders.value
-    .filter((order) => order.botId === null)
+    .filter((order) => order.botId === null && !order.isDeleted)
     .sort((orderA, orderB) => Number(orderB.isVIP) - Number(orderA.isVIP))[0];
+  console.log('in botGetOrder');
+  console.log('freePendingOrder', freePendingOrder);
 
   if (freePendingOrder) {
     freePendingOrder.botId = bot.id;
@@ -78,12 +106,13 @@ function botGetOrder(bot: Bot) {
       freePendingOrder.cookPeriod--;
     }, 1000);
 
+    console.log('in freePendingOrder');
+    console.log('freePendingOrder', freePendingOrder);
+
     bot.timer = setTimeout(() => {
-      removeTimer(bot);
       clearInterval(cookInterval);
-      freePendingOrder.isCompleted = true;
-      bot.orderId = null;
-      botGetOrder(bot);
+      resetBot(bot);
+      markOrderComplete(freePendingOrder, bot);
     }, freePendingOrder.cookPeriod * 1000);
   }
 }

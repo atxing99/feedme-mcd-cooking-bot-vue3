@@ -4,10 +4,5 @@ export interface Order {
   botId: number | null;
   isCompleted: boolean;
   cookPeriod: number;
-}
-
-export interface Bot {
-  id: number;
-  orderId: number | null;
-  timer?: NodeJS.Timeout | null;
+  isDeleted: boolean;
 }
