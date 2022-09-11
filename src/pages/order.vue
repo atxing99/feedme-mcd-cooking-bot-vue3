@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { Order, Bot } from '../models/order';
+import RobotCard from 'src/components/robotCard.vue';
 
 let botIndex = 1;
 let orderIndex = 1;
@@ -56,6 +57,10 @@ function addOrder(isVIP = false) {
   }
 }
 
+function removeOrder(orderId: number) {
+  orders.value = orders.value.filter((order) => order.id != orderId);
+}
+
 function removeTimer(bot: Bot) {
   bot.timer = null;
 }
@@ -70,8 +75,7 @@ function botGetOrder(bot: Bot) {
     bot.orderId = freePendingOrder.id;
 
     const cookInterval = setInterval(() => {
-      console.log(freePendingOrder.cookPeriod);
-      freePendingOrder.cookPeriod = freePendingOrder.cookPeriod - 1;
+      freePendingOrder.cookPeriod--;
     }, 1000);
 
     bot.timer = setTimeout(() => {
@@ -86,13 +90,13 @@ function botGetOrder(bot: Bot) {
 </script>
 
 <template>
-  <div class="column window-height bg-none">
+  <div class="column window-height bg-grey-4">
     <div class="col-shrink">
       <div class="text-h5 text-center q-pa-md">FeedMe McDonald Cooking Bot</div>
       <div class="row">
         <div class="col q-pa-md">
           <q-card class="my-card">
-            <q-card-section class="bg-purple text-white">
+            <q-card-section class="bg-grey-8 text-white">
               <div class="text-h6 row items-center justify-center">
                 <span>Robot</span>
                 <span
@@ -113,8 +117,17 @@ function botGetOrder(bot: Bot) {
         </div>
         <div class="col q-pa-md">
           <q-card class="my-card">
-            <q-card-section class="bg-purple text-white">
-              <div class="text-h6 text-center">Order</div>
+            <q-card-section class="bg-grey-8 text-white">
+              <div class="text-h6 row items-center justify-center">
+                <span>Order</span>
+                <span
+                  ><q-icon
+                    name="receipt_long"
+                    size="1.5rem"
+                    class="q-pa-xs q-py-sm"
+                  />
+                </span>
+              </div>
             </q-card-section>
 
             <q-card-actions align="around">
@@ -125,35 +138,34 @@ function botGetOrder(bot: Bot) {
         </div>
       </div>
     </div>
-    <div class="col q-pa-md">
+    <div class="col-grow q-pa-md">
       <q-card class="my-card">
-        <q-card-section class="bg-purple text-white">
-          <div class="text-h6 text-center">Processing</div>
+        <q-card-section class="bg-grey-8 text-white">
+          <div class="text-h6 text-center">
+            Robots
+            <div class="robot-status">
+              <ul>
+                <li><span class="pending-box"></span> = Pending</li>
+                <li><span class="preparing-box"></span> = Preparing</li>
+              </ul>
+            </div>
+          </div>
         </q-card-section>
 
         <q-scroll-area style="height: 280px">
           <div class="row">
-            <div v-for="bot in bots" :key="bot.id" class="col-4 q-pa-sm">
-              <div class="q-ma-sm q-pa-md" style="border: 1px solid black">
-                <div>Robot ID: {{ bot.id }}</div>
-                <div>
-                  Order ID:
-                  {{ bot.orderId == null ? 'Pending Task' : bot.orderId }}
-                </div>
-                <div>
-                  Status: {{ bot.orderId == null ? 'Pending' : 'Cooking' }}
-                </div>
-              </div>
+            <div v-for="bot in bots" :key="bot.id" class="col-2 q-pa-sm">
+              <robot-card :bot="bot" />
             </div>
           </div>
         </q-scroll-area>
       </q-card>
     </div>
-    <div class="col bg-grey-4">
+    <div class="col-shrink">
       <div class="row">
         <div class="col q-pa-md">
           <q-card class="my-card">
-            <q-card-section class="bg-purple text-white">
+            <q-card-section class="bg-grey-8 text-white">
               <div class="text-h6 text-center">Pending</div>
             </q-card-section>
 
@@ -164,16 +176,16 @@ function botGetOrder(bot: Bot) {
                   style="width: 100%; border-collapse: collapse"
                 >
                   <tr>
-                    <td>Order ID</td>
-                    <td>Order Type</td>
-                    <td>Status</td>
-                    <td>Count Down (Second)</td>
-                    <td>Queue</td>
+                    <th>Order ID</th>
+                    <th>Order Type</th>
+                    <th>Status</th>
+                    <th>Count Down (Second)</th>
+                    <th>Queue</th>
                   </tr>
 
                   <tr v-for="(order, index) in pendingOrders" :key="order.id">
                     <td>{{ order.id }}</td>
-                    <td :class="order.isVIP ? 'text-orange-8 text-bold' : ''">
+                    <td :class="order.isVIP ? 'text-yellow-8' : ''">
                       {{ order.isVIP ? 'VIP Order' : 'Normal Order' }}
                     </td>
                     <td>
@@ -193,8 +205,15 @@ function botGetOrder(bot: Bot) {
                         />
                       </span>
                     </td>
-                    <td>{{ order.cookPeriod }}</td>
+                    <td>
+                      <q-icon name="hourglass_top" size="1rem" color="blue" />{{
+                        order.cookPeriod
+                      }}
+                    </td>
                     <td>{{ index + 1 }}</td>
+                    <td @click="removeOrder(order.id)" style="cursor: pointer">
+                      <q-icon name="delete" size="1.5rem" color="red" />
+                    </td>
                   </tr>
                 </table>
               </q-scroll-area>
@@ -203,7 +222,7 @@ function botGetOrder(bot: Bot) {
         </div>
         <div class="col q-pa-md">
           <q-card class="my-card">
-            <q-card-section class="bg-purple text-white">
+            <q-card-section class="bg-grey-8 text-white">
               <div class="text-h6 text-center">Complete</div>
             </q-card-section>
 
@@ -211,15 +230,19 @@ function botGetOrder(bot: Bot) {
               <q-scroll-area style="height: 200px">
                 <table class="text-center" style="width: 100%">
                   <tr>
-                    <td>Order ID</td>
-                    <td>Order Type</td>
-                    <td>Status</td>
-                    <td>Queue</td>
+                    <th>Order ID</th>
+                    <th>Order Type</th>
+                    <th>Status</th>
+                    <th>Queue</th>
                   </tr>
                   <tr v-for="(order, index) in completedOrders" :key="order.id">
                     <td>{{ order.id }}</td>
-                    <td>{{ order.isVIP ? 'VIP Order' : 'Normal Order' }}</td>
-                    <td class="text-green text-bold">Completed</td>
+                    <td :class="order.isVIP ? 'text-yellow-8' : ''">
+                      {{ order.isVIP ? 'VIP Order' : 'Normal Order' }}
+                    </td>
+                    <td class="text-green text-bold">
+                      <q-icon name="done" size="1rem" color="green" />
+                    </td>
                     <td>{{ index + 1 }}</td>
                   </tr>
                 </table>
@@ -233,7 +256,32 @@ function botGetOrder(bot: Bot) {
 </template>
 
 <style>
-.processing {
-  color: blue;
+.robot-status {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.robot-status > ul {
+  list-style: none;
+}
+.robot-status > ul > li {
+  text-align: left;
+  font-size: 1rem;
+  font-weight: normal;
+  line-height: 1.5;
+}
+.robot-status > ul > li > span {
+  display: inline-block;
+}
+.pending-box {
+  width: 10px;
+  height: 10px;
+  background-color: #66a3ff;
+}
+.preparing-box {
+  width: 10px;
+  height: 10px;
+  background-color: #fc6c3e;
 }
 </style>
