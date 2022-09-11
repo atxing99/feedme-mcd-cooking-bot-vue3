@@ -284,7 +284,7 @@ function botGetOrder(bot: Bot) {
   </div>
 </template>
 
-<style>
+<style scoped>
 .robot-status {
   position: absolute;
   right: 15px;
