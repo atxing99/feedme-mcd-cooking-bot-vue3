@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { Order } from '../models/order';
 import { Bot } from '../models/bot';
 import RobotCard from 'src/components/robotCard.vue';
+import moment from 'moment';
 
 let botIndex = 1;
 let orderIndex = 1;
@@ -16,17 +17,24 @@ const pendingOrders = computed(() =>
 );
 
 const completedOrders = computed(() =>
-  orders.value.filter((order) => order.isCompleted === true && !order.isDeleted)
+  orders.value
+    .filter((order) => order.isCompleted === true && !order.isDeleted)
+    .sort(
+      (a, b) =>
+        moment(a.completedAt).toDate().getTime() -
+        moment(b.completedAt).toDate().getTime()
+    )
 );
 
 function addBot() {
-  const bot = {
+  bots.value.push({
     id: botIndex++,
     orderId: null
-  };
-  bots.value.push(bot);
-  console.log('bots', bots.value);
-  botGetOrder(bot);
+  });
+  const freeBot = getFreeBot();
+  if (freeBot) {
+    botGetOrder(freeBot);
+  }
 }
 
 function removeBot() {
@@ -43,6 +51,11 @@ function removeBot() {
   }
 }
 
+function resetBot(bot: Bot) {
+  bot.orderId = null;
+  bot.timer = null;
+}
+
 function getFreeBot(): Bot | null {
   const freeBot = bots.value.find((bot) => bot.orderId === null);
   return freeBot ? freeBot : null;
@@ -55,65 +68,54 @@ function addOrder(isVIP = false) {
     botId: null,
     isCompleted: false,
     cookPeriod: 5,
-    isDeleted: false
+    isDeleted: false,
+    completedAt: ''
   });
 
   const freeBot = getFreeBot();
-
   if (freeBot) {
-    console.log('got freeBot');
     botGetOrder(freeBot);
-  } else {
-    console.log('no freeBot');
   }
-  console.log('orders', orders.value);
 }
 
 function removeOrder(orderId: number) {
   const orderToRemove = orders.value.find((order) => order.id == orderId);
   if (orderToRemove) {
     orderToRemove.isDeleted = true;
-  }
-}
 
-function resetBot(bot: Bot) {
-  bot.orderId = null;
-  bot.timer = null;
+    const bot = bots.value.find((bot) => bot.orderId == orderToRemove.id);
+    if (bot) {
+      resetBot(bot);
+    }
+  }
 }
 
 function markOrderComplete(order: Order, bot: Bot) {
   order.isCompleted = true;
+  order.completedAt = moment(Date.now()).toISOString();
   botGetOrder(bot);
-
-  console.log('markOrderComplete');
-  console.log('order', order);
-  console.log('bot', bot);
-  console.log('bots.value', bots.value);
 }
 
 function botGetOrder(bot: Bot) {
   const freePendingOrder: Order = orders.value
     .filter((order) => order.botId === null && !order.isDeleted)
     .sort((orderA, orderB) => Number(orderB.isVIP) - Number(orderA.isVIP))[0];
-  console.log('in botGetOrder');
-  console.log('freePendingOrder', freePendingOrder);
 
   if (freePendingOrder) {
     freePendingOrder.botId = bot.id;
     bot.orderId = freePendingOrder.id;
 
+    const timeoutPeriod = freePendingOrder.cookPeriod * 1000;
+
     const cookInterval = setInterval(() => {
       freePendingOrder.cookPeriod--;
     }, 1000);
-
-    console.log('in freePendingOrder');
-    console.log('freePendingOrder', freePendingOrder);
 
     bot.timer = setTimeout(() => {
       clearInterval(cookInterval);
       resetBot(bot);
       markOrderComplete(freePendingOrder, bot);
-    }, freePendingOrder.cookPeriod * 1000);
+    }, timeoutPeriod);
   }
 }
 </script>
@@ -259,12 +261,14 @@ function botGetOrder(bot: Bot) {
               <q-scroll-area style="height: 200px">
                 <table class="text-center" style="width: 100%">
                   <tr>
+                    <th>#</th>
                     <th>Order ID</th>
                     <th>Order Type</th>
                     <th>Status</th>
-                    <th>Queue</th>
+                    <th>Completed At</th>
                   </tr>
                   <tr v-for="(order, index) in completedOrders" :key="order.id">
+                    <td>{{ index + 1 }}</td>
                     <td>{{ order.id }}</td>
                     <td :class="order.isVIP ? 'text-yellow-8' : ''">
                       {{ order.isVIP ? 'VIP Order' : 'Normal Order' }}
@@ -272,7 +276,9 @@ function botGetOrder(bot: Bot) {
                     <td class="text-green text-bold">
                       <q-icon name="done" size="1rem" color="green" />
                     </td>
-                    <td>{{ index + 1 }}</td>
+                    <td>
+                      {{ moment(order.completedAt).format('HH:mm:ss') }}
+                    </td>
                   </tr>
                 </table>
               </q-scroll-area>

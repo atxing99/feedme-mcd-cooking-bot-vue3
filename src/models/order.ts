@@ -5,4 +5,5 @@ export interface Order {
   isCompleted: boolean;
   cookPeriod: number;
   isDeleted: boolean;
+  completedAt: string;
 }
