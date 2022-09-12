@@ -277,7 +277,7 @@ function botGetOrder(bot: Bot) {
                       <q-icon name="done" size="1rem" color="green" />
                     </td>
                     <td>
-                      {{ moment(order.completedAt).format('HH:mm:ss') }}
+                      {{ moment(order.completedAt).format('HH:mm:ss A') }}
                     </td>
                   </tr>
                 </table>
