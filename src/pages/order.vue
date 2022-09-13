@@ -12,7 +12,7 @@ const orders = ref<Order[]>([]);
 
 const pendingOrders = computed(() =>
   orders.value
-    .filter((order) => order.isCompleted === false && order.isDeleted !== true)
+    .filter((order) => order.isCompleted === false && !order.isDeleted)
     .sort((orderA, orderB) => Number(orderB.isVIP) - Number(orderA.isVIP))
 );
 
@@ -67,7 +67,7 @@ function addOrder(isVIP = false) {
     isVIP: isVIP,
     botId: null,
     isCompleted: false,
-    cookPeriod: 5,
+    cookPeriod: 10,
     isDeleted: false,
     completedAt: ''
   });
@@ -169,7 +169,7 @@ function botGetOrder(bot: Bot) {
         </div>
       </div>
     </div>
-    <div class="col-grow q-pa-md">
+    <div class="col q-pa-md">
       <q-card class="my-card">
         <q-card-section class="bg-grey-8 text-white">
           <div class="text-h6 text-center">
@@ -185,7 +185,11 @@ function botGetOrder(bot: Bot) {
 
         <q-scroll-area style="height: 280px">
           <div class="row">
-            <div v-for="bot in bots" :key="bot.id" class="col-2 q-pa-sm">
+            <div
+              v-for="bot in bots"
+              :key="bot.id"
+              class="col-md-2 col-4 q-pa-sm"
+            >
               <robot-card :bot="bot" />
             </div>
           </div>
@@ -201,7 +205,7 @@ function botGetOrder(bot: Bot) {
             </q-card-section>
 
             <div class="q-pa-sm">
-              <q-scroll-area style="height: 200px">
+              <q-scroll-area style="height: 150px">
                 <table
                   class="text-center"
                   style="width: 100%; border-collapse: collapse"
@@ -258,7 +262,7 @@ function botGetOrder(bot: Bot) {
             </q-card-section>
 
             <div class="q-pa-sm">
-              <q-scroll-area style="height: 200px">
+              <q-scroll-area style="height: 150px">
                 <table class="text-center" style="width: 100%">
                   <tr>
                     <th>#</th>
@@ -277,7 +281,7 @@ function botGetOrder(bot: Bot) {
                       <q-icon name="done" size="1rem" color="green" />
                     </td>
                     <td>
-                      {{ moment(order.completedAt).format('HH:mm:ss A') }}
+                      {{ moment(order.completedAt).format('hh:mm:ss A') }}
                     </td>
                   </tr>
                 </table>
