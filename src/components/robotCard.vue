@@ -36,7 +36,7 @@ defineProps({
   </q-card>
 </template>
 
-<style>
+<style scoped>
 .pending {
   background-color: rgb(102, 163, 255);
 }
