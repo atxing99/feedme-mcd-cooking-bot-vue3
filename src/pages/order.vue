@@ -39,14 +39,19 @@ function addBot() {
 
 function removeBot() {
   let removedBot = bots.value.pop();
+  if (removedBot?.timer) {
+    clearTimeout(removedBot.timer);
+  }
   if (removedBot?.orderId) {
     var selectedOrder = orders.value.find(
       (order) => order.id === removedBot?.orderId
     );
     if (selectedOrder) {
       selectedOrder.botId = null;
-      selectedOrder.isDeleted = true;
-      resetBot(removedBot);
+      selectedOrder.cookPeriod = 10;
+      clearInterval(selectedOrder.cookTimer);
+      //selectedOrder.isDeleted = true;
+      //resetBot(removedBot);
     }
   }
 }
@@ -107,12 +112,15 @@ function botGetOrder(bot: Bot) {
 
     const timeoutPeriod = freePendingOrder.cookPeriod * 1000;
 
-    const cookInterval = setInterval(() => {
+    // const cookInterval = setInterval(() => {
+    //   freePendingOrder.cookPeriod--;
+    // }, 1000);
+    freePendingOrder.cookTimer = setInterval(() => {
       freePendingOrder.cookPeriod--;
     }, 1000);
 
     bot.timer = setTimeout(() => {
-      clearInterval(cookInterval);
+      clearInterval(freePendingOrder.cookTimer);
       resetBot(bot);
       markOrderComplete(freePendingOrder, bot);
     }, timeoutPeriod);

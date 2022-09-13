@@ -6,4 +6,5 @@ export interface Order {
   cookPeriod: number;
   isDeleted: boolean;
   completedAt: string;
+  cookTimer?: NodeJS.Timer;
 }
