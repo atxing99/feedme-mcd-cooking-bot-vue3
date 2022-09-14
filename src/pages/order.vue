@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { Order } from '../models/order';
-import { Bot } from '../models/bot';
+import { Order, resetOrder, completeOrder } from '../models/order';
+import { Bot, resetBot } from '../models/bot';
 import RobotCard from 'src/components/robotCard.vue';
 import moment from 'moment';
 
@@ -12,7 +12,7 @@ const orders = ref<Order[]>([]);
 
 const pendingOrders = computed(() =>
   orders.value
-    .filter((order) => order.isCompleted === false && !order.isDeleted)
+    .filter((order) => order.isCompleted === false && order.isDeleted !== true)
     .sort((orderA, orderB) => Number(orderB.isVIP) - Number(orderA.isVIP))
 );
 
@@ -31,39 +31,21 @@ function addBot() {
     id: botIndex++,
     orderId: null
   });
-  const freeBot = getFreeBot();
-  if (freeBot) {
-    botGetOrder(freeBot);
-  }
+  processOrder();
 }
 
 function removeBot() {
   let removedBot = bots.value.pop();
-  if (removedBot?.timer) {
-    clearTimeout(removedBot.timer);
-  }
   if (removedBot?.orderId) {
     var selectedOrder = orders.value.find(
       (order) => order.id === removedBot?.orderId
     );
     if (selectedOrder) {
-      selectedOrder.botId = null;
-      selectedOrder.cookPeriod = 10;
-      clearInterval(selectedOrder.cookTimer);
-      //selectedOrder.isDeleted = true;
-      //resetBot(removedBot);
+      resetOrder(selectedOrder);
+      resetBot(removedBot);
     }
   }
-}
-
-function resetBot(bot: Bot) {
-  bot.orderId = null;
-  bot.timer = null;
-}
-
-function getFreeBot(): Bot | null {
-  const freeBot = bots.value.find((bot) => bot.orderId === null);
-  return freeBot ? freeBot : null;
+  processOrder();
 }
 
 function addOrder(isVIP = false) {
@@ -72,59 +54,52 @@ function addOrder(isVIP = false) {
     isVIP: isVIP,
     botId: null,
     isCompleted: false,
-    cookPeriod: 10,
+    cookPeriod: null,
     isDeleted: false,
     completedAt: ''
   });
-
-  const freeBot = getFreeBot();
-  if (freeBot) {
-    botGetOrder(freeBot);
-  }
+  processOrder();
 }
 
 function removeOrder(orderId: number) {
   const orderToRemove = orders.value.find((order) => order.id == orderId);
   if (orderToRemove) {
     orderToRemove.isDeleted = true;
-
     const bot = bots.value.find((bot) => bot.orderId == orderToRemove.id);
     if (bot) {
       resetBot(bot);
     }
+    processOrder();
   }
 }
 
-function markOrderComplete(order: Order, bot: Bot) {
-  order.isCompleted = true;
-  order.completedAt = moment(Date.now()).toISOString();
-  botGetOrder(bot);
-}
-
-function botGetOrder(bot: Bot) {
+function processOrder() {
+  const freeBot = bots.value.find((bot) => bot.orderId === null);
   const freePendingOrder: Order = orders.value
     .filter((order) => order.botId === null && !order.isDeleted)
     .sort((orderA, orderB) => Number(orderB.isVIP) - Number(orderA.isVIP))[0];
-
-  if (freePendingOrder) {
-    freePendingOrder.botId = bot.id;
-    bot.orderId = freePendingOrder.id;
-
-    const timeoutPeriod = freePendingOrder.cookPeriod * 1000;
-
-    // const cookInterval = setInterval(() => {
-    //   freePendingOrder.cookPeriod--;
-    // }, 1000);
-    freePendingOrder.cookTimer = setInterval(() => {
-      freePendingOrder.cookPeriod--;
-    }, 1000);
-
-    bot.timer = setTimeout(() => {
-      clearInterval(freePendingOrder.cookTimer);
-      resetBot(bot);
-      markOrderComplete(freePendingOrder, bot);
-    }, timeoutPeriod);
+  if (freeBot && freePendingOrder) {
+    botGetOrder(freeBot, freePendingOrder);
+    processOrder();
   }
+}
+
+function botGetOrder(bot: Bot, freePendingOrder: Order) {
+  freePendingOrder.botId = bot.id;
+  bot.orderId = freePendingOrder.id;
+  freePendingOrder.cookPeriod = freePendingOrder.botId % 2 == 0 ? 10 : 5;
+
+  freePendingOrder.cookTimer = setInterval(() => {
+    if (freePendingOrder.cookPeriod) {
+      freePendingOrder.cookPeriod--;
+      if (freePendingOrder.cookPeriod <= 0) {
+        clearInterval(freePendingOrder.cookTimer);
+        resetBot(bot);
+        completeOrder(freePendingOrder);
+        processOrder();
+      }
+    }
+  }, 1000);
 }
 </script>
 
@@ -133,7 +108,7 @@ function botGetOrder(bot: Bot) {
     <div class="col-shrink">
       <div class="text-h5 text-center q-pa-md">FeedMe McDonald Cooking Bot</div>
       <div class="row">
-        <div class="col q-pa-md">
+        <div class="col q-px-md">
           <q-card class="my-card">
             <q-card-section class="bg-grey-8 text-white">
               <div class="text-h6 row items-center justify-center">
@@ -154,7 +129,7 @@ function botGetOrder(bot: Bot) {
             </q-card-actions>
           </q-card>
         </div>
-        <div class="col q-pa-md">
+        <div class="col q-px-md">
           <q-card class="my-card">
             <q-card-section class="bg-grey-8 text-white">
               <div class="text-h6 row items-center justify-center">
@@ -177,7 +152,7 @@ function botGetOrder(bot: Bot) {
         </div>
       </div>
     </div>
-    <div class="col q-pa-md">
+    <div class="col q-px-md">
       <q-card class="my-card">
         <q-card-section class="bg-grey-8 text-white">
           <div class="text-h6 text-center">
@@ -191,12 +166,12 @@ function botGetOrder(bot: Bot) {
           </div>
         </q-card-section>
 
-        <q-scroll-area style="height: 280px">
+        <q-scroll-area style="height: 120px">
           <div class="row">
             <div
               v-for="bot in bots"
               :key="bot.id"
-              class="col-md-2 col-4 q-pa-sm"
+              class="col-4 col-md-2 q-pa-sm"
             >
               <robot-card :bot="bot" />
             </div>
@@ -213,7 +188,7 @@ function botGetOrder(bot: Bot) {
             </q-card-section>
 
             <div class="q-pa-sm">
-              <q-scroll-area style="height: 150px">
+              <q-scroll-area style="height: 120px">
                 <table
                   class="text-center"
                   style="width: 100%; border-collapse: collapse"
@@ -252,6 +227,8 @@ function botGetOrder(bot: Bot) {
                       <q-icon name="hourglass_top" size="1rem" color="blue" />{{
                         order.cookPeriod
                       }}
+                      / {{ order.botId! % 2 === 0 ? '10' : '5' }} (Bot
+                      {{ order.botId }})
                     </td>
                     <td>{{ index + 1 }}</td>
                     <td @click="removeOrder(order.id)" style="cursor: pointer">
@@ -270,7 +247,7 @@ function botGetOrder(bot: Bot) {
             </q-card-section>
 
             <div class="q-pa-sm">
-              <q-scroll-area style="height: 150px">
+              <q-scroll-area style="height: 120px">
                 <table class="text-center" style="width: 100%">
                   <tr>
                     <th>#</th>
@@ -289,7 +266,7 @@ function botGetOrder(bot: Bot) {
                       <q-icon name="done" size="1rem" color="green" />
                     </td>
                     <td>
-                      {{ moment(order.completedAt).format('hh:mm:ss A') }}
+                      {{ moment(order.completedAt).format('HH:mm:ss A') }}
                     </td>
                   </tr>
                 </table>
